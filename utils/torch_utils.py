@@ -104,6 +104,8 @@ def get_optimizer(name, parameters, lr):
         raise Exception("Unsupported optimizer: {}".format(name))
 
 def change_lr(optimizer, new_lr):
+    """Change learning rate of optimizer with new learning rate
+    """
     for param_group in optimizer.param_groups:
         param_group['lr'] = new_lr
 

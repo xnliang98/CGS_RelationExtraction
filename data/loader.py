@@ -18,17 +18,20 @@ class DataLoader(object):
         self.opt = opt
         self.vocab = vocab
         self.eval = evaluation
+        self.label2id = constant.LABEL_TO_ID
 
         with open(filename) as infile:
             data = json.load(infile)
+        self.raw_data = data
         data = self.preprocess(data, vocab, opt)
+
         # shuffle for training
         if not evaluation:
             indices = list(range(len(data)))
             random.shuffle(indices)
             data = [data[i] for i in indices]
-        id2label = dict([(v,k) for k,v in constant.LABEL_TO_ID.items()])
-        self.labels = [id2label[d[-1]] for d in data] 
+        self.id2label = dict([(v,k) for k,v in self.label2id.items()])
+        self.labels = [self.id2label[d[-1]] for d in data]
         self.num_examples = len(data)
 
         # chunk into batches
@@ -40,7 +43,7 @@ class DataLoader(object):
         """ Preprocess the data and convert to ids. """
         processed = []
         for d in data:
-            tokens = d['token']
+            tokens = list(d['token'])
             if opt['lower']:
                 tokens = [t.lower() for t in tokens]
             # anonymize tokens
@@ -52,11 +55,15 @@ class DataLoader(object):
             pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
             deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
+            head = [int(x) for x in d['stanford_head']]
+            assert any([x == 0 for x in head])
             l = len(tokens)
             subj_positions = get_positions(d['subj_start'], d['subj_end'], l)
             obj_positions = get_positions(d['obj_start'], d['obj_end'], l)
-            relation = constant.LABEL_TO_ID[d['relation']]
-            processed += [(tokens, pos, ner, deprel, subj_positions, obj_positions, relation)]
+            subj_type = [constant.SUBJ_NER_TO_ID[d['subj_type']]]
+            obj_type = [constant.OBJ_NER_TO_ID[d['obj_type']]]
+            relation = self.label2id[d['relation']]
+            processed += [(tokens, pos, ner, deprel, head, subj_positions, obj_positions, subj_type, obj_type, relation)]
         return processed
 
     def gold(self):
@@ -64,7 +71,6 @@ class DataLoader(object):
         return self.labels
 
     def __len__(self):
-        #return 50
         return len(self.data)
 
     def __getitem__(self, key):
@@ -76,12 +82,12 @@ class DataLoader(object):
         batch = self.data[key]
         batch_size = len(batch)
         batch = list(zip(*batch))
-        assert len(batch) == 7
+        assert len(batch) == 10
 
         # sort all fields by lens for easy RNN operations
         lens = [len(x) for x in batch[0]]
         batch, orig_idx = sort_all(batch, lens)
-        
+
         # word dropout
         if not self.eval:
             words = [word_dropout(sent, self.opt['word_dropout']) for sent in batch[0]]
@@ -94,12 +100,15 @@ class DataLoader(object):
         pos = get_long_tensor(batch[1], batch_size)
         ner = get_long_tensor(batch[2], batch_size)
         deprel = get_long_tensor(batch[3], batch_size)
-        subj_positions = get_long_tensor(batch[4], batch_size)
-        obj_positions = get_long_tensor(batch[5], batch_size)
+        head = get_long_tensor(batch[4], batch_size)
+        subj_positions = get_long_tensor(batch[5], batch_size)
+        obj_positions = get_long_tensor(batch[6], batch_size)
+        subj_type = get_long_tensor(batch[7], batch_size)
+        obj_type = get_long_tensor(batch[8], batch_size)
 
-        rels = torch.LongTensor(batch[6])
+        rels = torch.LongTensor(batch[9])
 
-        return (words, masks, pos, ner, deprel, subj_positions, obj_positions, rels, orig_idx)
+        return (words, masks, pos, ner, deprel, head, subj_positions, obj_positions, subj_type, obj_type, rels, orig_idx)
 
     def __iter__(self):
         for i in range(self.__len__()):
@@ -132,4 +141,5 @@ def word_dropout(tokens, dropout):
     """ Randomly dropout tokens (IDs) and replace them with <UNK> tokens. """
     return [constant.UNK_ID if x != constant.UNK_ID and np.random.random() < dropout \
             else x for x in tokens]
+
 
