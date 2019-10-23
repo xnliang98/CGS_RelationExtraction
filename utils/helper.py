@@ -1,12 +1,12 @@
 """
 Helper functions.
 """
-
 import os
+import subprocess
 import json
 import argparse
 
-### IO
+# file and path operators
 def check_dir(d):
     if not os.path.exists(d):
         print("Directory {} does not exist. Exit.".format(d))
@@ -19,47 +19,48 @@ def check_files(files):
             exit(1)
 
 def ensure_dir(d, verbose=True):
+    """ check dir, if not exist, creat it. """
     if not os.path.exists(d):
         if verbose:
-            print("Directory {} do not exist; creating...".format(d))
+            print("Directory {} do not exist; Creating...".format(d))
         os.makedirs(d)
 
+# config file 
 def save_config(config, path, verbose=True):
-    with open(path, 'w') as outfile:
-        json.dump(config, outfile, indent=2)
+    with open(path, 'w') as fout:
+        json.dump(config, fout, indent=2)
     if verbose:
         print("Config saved to file {}".format(path))
     return config
 
 def load_config(path, verbose=True):
-    with open(path) as f:
+    with open(path, 'r') as fin:
         config = json.load(f)
     if verbose:
-        print("Config loaded from file {}".format(path))
+        print("Config loaded from {}".format(path))
     return config
 
-def print_config(config):
+def print(config):
     info = "Running with the following configs:\n"
-    for k,v in config.items():
-        info += "\t{} : {}\n".format(k, str(v))
-    print("\n" + info + "\n")
-    return
+    for k, v in config.items():
+        info += "\t{} : {}\n".format(k, v)
+    print("\n" + info + '\n')
+    return None
 
+# log file
 class FileLogger(object):
     """
-    A file logger that opens the file periodically and write to it.
+    A logger that opens a file to output log info.
     """
     def __init__(self, filename, header=None):
         self.filename = filename
         if os.path.exists(filename):
-            # remove the old file
+            # remove existed file
             os.remove(filename)
         if header is not None:
-            with open(filename, 'w') as out:
-                print(header, file=out)
+            with open(filename, 'w') as fout:
+                print(header, file=fout)
     
     def log(self, message):
-        with open(self.filename, 'a') as out:
-            print(message, file=out)
-
-
+        with open(self.filename, 'a') as fout:
+            print(message, file=fout)

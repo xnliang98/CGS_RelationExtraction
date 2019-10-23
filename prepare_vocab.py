@@ -1,6 +1,7 @@
 """
 Prepare vocabulary and initial word vectors.
 """
+import os
 import json
 import pickle
 import argparse
@@ -24,18 +25,18 @@ def parse_args():
 
 def main():
     args = parse_args()
-    
+
     # input files
-    train_file = args.data_dir + '/train.json'
-    dev_file = args.data_dir + '/dev.json'
-    test_file = args.data_dir + '/test.json'
-    wv_file = args.glove_dir + '/' + args.wv_file
+    train_file = os.path.join(args.data_dir, 'train.json')
+    dev_file = os.path.join(args.data_dir, 'dev.json')
+    test_file = os.path.join(args.data_dir, 'test.json')
+    wv_file = os.path.join(args.glove_dir, args.wv_file)
     wv_dim = args.wv_dim
 
     # output files
     helper.ensure_dir(args.vocab_dir)
-    vocab_file = args.vocab_dir + '/vocab.pkl'
-    emb_file = args.vocab_dir + '/embedding.npy'
+    vocab_file = os.path.join(args.vocab_dir, 'vocab.pkl')
+    emb_file = os.path.join(args.vocab_dir, 'embedding.npy')
 
     # load files
     print("loading files...")

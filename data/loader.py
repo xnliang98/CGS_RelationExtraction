@@ -109,7 +109,6 @@ class DataLoader(object):
             rels, # relation id 
             orig_idx # unsorted idx
             )
-    
         """
         if not isinstance(key, int):
             raise TypeError

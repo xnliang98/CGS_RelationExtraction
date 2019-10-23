@@ -59,7 +59,7 @@ class Vocab(object):
             self.id2word = sorted(word_counter, key=lambda k:self.word_counter[k], reverse=True)
             # add PAD_TOKEN and UNK_TOKEN to id2word
             self.id2word = [constant.PAD_TOKEN, constant.UNK_TOKEN] + self.id2word
-            self.word2id = {v, k for k, v in self.id2word.items()}
+            self.word2id = {v: k for k, v in self.id2word.items()}
             self.size = len(self.id2word)
             self.save(filename)
             print("Vocab size {} saved to file {}.".format(self.size, filename))
@@ -67,7 +67,7 @@ class Vocab(object):
     def load(self, filename):
         with open(filename, 'rb') as fin:
             id2word = pickle.load(fin)
-            word2id = {v, k for k, v in id2word.items(0)}
+            word2id = {v: k for k, v in id2word.items(0)}
         return id2word, word2id
     
     def save(self, filename):
