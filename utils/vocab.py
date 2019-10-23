@@ -10,104 +10,86 @@ import pickle
 
 from utils import constant
 
-random.seed(1234)
-np.random.seed(1234)
+# set random seed
+random_seed = 1234
+random.seed(random_seed)
+np.random.seed(random_seed)
 
 def build_embedding(wv_file, vocab, wv_dim):
     vocab_size = len(vocab)
     emb = np.random.uniform(-1, 1, (vocab_size, wv_dim))
-    emb[constant.PAD_ID] = 0 # <pad> should be all 0 (using broadcast)
+    emb[constant.PAD_ID] = 0 # <PAD> should be all 0
 
     w2id = {w: i for i, w in enumerate(vocab)}
-    with open(wv_file, encoding="utf8") as f:
+    with open(wv_file, encoding="utf-8") as f:
         for line in f:
             elems = line.split()
-            token = ''.join(elems[0:-wv_dim])
+            token = "".join(elems[0: -wv_dim])
             if token in w2id:
                 emb[w2id[token]] = [float(v) for v in elems[-wv_dim:]]
     return emb
 
 def load_glove_vocab(file, wv_dim):
-    """
-    Load all words from glove.
+    """Load all words from glove
     """
     vocab = set()
-    with open(file, encoding='utf8') as f:
+    with open(file, encoding='utf-8') as f:
         for line in f:
             elems = line.split()
-            token = ''.join(elems[0:-wv_dim])
+            token = "".join(elems[0: -wv_dim])
             vocab.add(token)
     return vocab
 
-def normalize_glove(token):
-    mapping = {'-LRB-': '(',
-                '-RRB-': ')',
-                '-LSB-': '[',
-                '-RSB-': ']',
-                '-LCB-': '{',
-                '-RCB-': '}'}
-    if token in mapping:
-        token = mapping[token]
-    return token
-
 class Vocab(object):
+
     def __init__(self, filename, load=False, word_counter=None, threshold=0):
         if load:
             assert os.path.exists(filename), "Vocab file does not exist at " + filename
             # load from file and ignore all other params
             self.id2word, self.word2id = self.load(filename)
-            self.size = len(self.id2word)
-            print("Vocab size {} loaded from file".format(self.size))
+            self.size = len(self.word2id)
+            print("Vocab size {} loaded from file {}".format(self.size, filename))
         else:
-            print("Creating vocab from scratch...")
-            assert word_counter is not None, "word_counter is not provided for vocab creation."
+            print("Creating vocab from scratch ...")
+            assert word_counter is not None, "word counter is not provided for vocab creation."
             self.word_counter = word_counter
             if threshold > 1:
-                # remove words that occur less than thres
-                self.word_counter = dict([(k,v) for k,v in self.word_counter.items() if v >= threshold])
-            self.id2word = sorted(self.word_counter, key=lambda k:self.word_counter[k], reverse=True)
-            # add special tokens to the beginning
+                # remove words that occur less than threshold
+                self.word_counter = dict([(k, v) for k, v in self.word_counter.items() if v >= threshold])
+            self.id2word = sorted(word_counter, key=lambda k:self.word_counter[k], reverse=True)
+            # add PAD_TOKEN and UNK_TOKEN to id2word
             self.id2word = [constant.PAD_TOKEN, constant.UNK_TOKEN] + self.id2word
-            self.word2id = dict([(self.id2word[idx],idx) for idx in range(len(self.id2word))])
+            self.word2id = {v, k for k, v in self.id2word.items()}
             self.size = len(self.id2word)
             self.save(filename)
-            print("Vocab size {} saved to file {}".format(self.size, filename))
-
+            print("Vocab size {} saved to file {}.".format(self.size, filename))
+    
     def load(self, filename):
-        with open(filename, 'rb') as infile:
-            id2word = pickle.load(infile)
-            word2id = dict([(id2word[idx], idx) for idx in range(len(id2word))])
+        with open(filename, 'rb') as fin:
+            id2word = pickle.load(fin)
+            word2id = {v, k for k, v in id2word.items(0)}
         return id2word, word2id
-
+    
     def save(self, filename):
-        #assert not os.path.exists(filename), "Cannot save vocab: file exists at " + filename
         if os.path.exists(filename):
             print("Overwriting old vocab file at " + filename)
             os.remove(filename)
-        with open(filename, 'wb') as outfile:
-            pickle.dump(self.id2word, outfile)
-        return
-
-    def map(self, token_list):
-        """
-        Map a list of tokens to their ids.
-        """
-        return [self.word2id[w] if w in self.word2id else constant.VOCAB_UNK_ID for w in token_list]
-
-    def unmap(self, idx_list):
-        """
-        Unmap ids back to tokens.
-        """
-        return [self.id2word[idx] for idx in idx_list]
+        with open(filename, 'wb') as fout:
+            pickle.dump(self.id2word, fout)
+        return None
     
-    def get_embeddings(self, word_vectors=None, dim=100):
-        #self.embeddings = 2 * constant.EMB_INIT_RANGE * np.random.rand(self.size, dim) - constant.EMB_INIT_RANGE
-        self.embeddings = np.zeros((self.size, dim))
-        if word_vectors is not None:
-            assert len(list(word_vectors.values())[0]) == dim, \
-                    "Word vectors does not have required dimension {}.".format(dim)
+    def map(self, token_list):
+        return [self.word2id[w] if w in self.word2id else constant.UNK_ID for w in token_list]
+    
+    def unmap(self, idx_list):
+        return [id2word[x] for x in idx_list]
+    
+    def get_embedding(self, word_vector=None, dim=100):
+        self.embeddings = 2 * constant.EMB_INIT_RANGE * np.random.rand(self.size, dim) - constant.EMB_INIT_RANGE
+        if word_vector is not None:
+            assert len(list(word_vector.values())[0]) == dim, \
+                "Word vectors does not have requires dimension {}".format(dim)
             for w, idx in self.word2id.items():
-                if w in word_vectors:
-                    self.embeddings[idx] = np.asarray(word_vectors[w])
+                if w in word_vector:
+                    self.embeddings[idx] = np.asarray(word_vector[w])
         return self.embeddings
-
