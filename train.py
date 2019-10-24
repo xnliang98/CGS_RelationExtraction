@@ -36,7 +36,11 @@ def get_parser():
     parser.add_argument("--num_layers", type=int, default=2, help="Number of RNN layers.")
     parser.add_argument('--dropout', type=float, default=0.5, help='Dropout rate.')
     parser.add_argument('--word_dropout', type=float, default=0.04, help='The rate at which randomly set a word to UNK.')
-
+    parser.add_argument('--attn', dest='attn', action='store_true', help='Use attention layer.')
+    parser.add_argument('--no-attn', dest='attn', action='store_false')
+    parser.set_defaults(attn=True)
+    parser.add_argument('--attn_dim', type=int, default=200, help='Attention size.')
+    parser.add_argument('--pe_dim', type=int, default=30, help='Position encoding dimension.')
     # is lower?
     parser.add_argument('--lower', dest='lower', action='store_true', help='Lowercase all words.')
     parser.add_argument('--no-lower', dest='lower', action='store_false')
@@ -103,12 +107,15 @@ def main():
     model_save_dir = opt['save_dir'] + '/' + str(model_id)
     opt['model_save_dir'] = model_save_dir
     helper.ensure_dir(model_save_dir, verbose=True)
-
+  
     # save config
-    helper.save_config(opt, os.path.join(model_save_dir, 'config.json'), verbose=True)
+    path = os.path.join(model_save_dir, 'config.json')
+    helper.save_config(opt, path, verbose=True)
     vocab.save(os.path.join(model_save_dir, 'vocab.pkl'))
     file_logger = helper.FileLogger(os.path.join(model_save_dir, opt['log']), 
                                     header="# epoch\ttrain_loss\tdev_loss\tdev_score\tbest_dev_score")
+
+    
     # print model info
     helper.print_config(opt)
 

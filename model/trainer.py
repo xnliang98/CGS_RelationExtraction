@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import numpy as np    
 
 from utils import torch_utils
-from .lstm_re import LSTMRelation
+from .palstm import PositionAwareRNN
 
 
 class Trainer(object):
@@ -66,7 +66,7 @@ class LSTMTrainer(Trainer):
     def __init__(self, opt, emb_matrix=None):
         self.opt = opt
         self.emb_matrix = emb_matrix
-        self.model = LSTMRelation(opt, emb_matrix=emb_matrix)
+        self.model = PositionAwareRNN(opt, emb_matrix=emb_matrix)
         self.criterion = nn.CrossEntropyLoss()
         self.parameters = [p for p in self.model.parameters() if p.requires_grad]
         if opt['cuda']:

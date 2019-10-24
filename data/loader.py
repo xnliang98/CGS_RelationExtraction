@@ -32,7 +32,7 @@ class DataLoader(object):
             random.shuffle(indices)
             data = [data[i] for i in indices]
         
-        self.id2label = {v, k for k, v in self.label2id.items()}
+        self.id2label = {v: k for k, v in self.label2id.items()}
         self.labels = [self.id2label[d[-1]] for d in data]
         self.num_examples = len(data)
 
@@ -74,7 +74,7 @@ class DataLoader(object):
             # pos and ner and deprel to id
             pos = map_to_ids(d['stanford_pos'], constant.POS_TO_ID)
             ner = map_to_ids(d['stanford_ner'], constant.NER_TO_ID)
-            deprel = map_to_ids(d['shanford_deprel'], constant.DEPREL_TO_ID)
+            deprel = map_to_ids(d['stanford_deprel'], constant.DEPREL_TO_ID)
             head = [int(i) for i in d['stanford_head']]
             assert any([x == 0 for x in head])
             l = len(tokens)
@@ -82,7 +82,7 @@ class DataLoader(object):
             subj_positions = get_positions(ss, se, l)
             obj_positions = get_positions(os, oe, l)
             subj_type = [constant.SUBJ_NER_TO_ID[d['subj_type']]]
-            obj_type = [constant.SUBJ_NER_TO_ID[d['obj_type']]]
+            obj_type = [constant.OBJ_NER_TO_ID[d['obj_type']]]
             relation = self.label2id[d['relation']]
             processed += [(tokens, pos, ner, deprel, head, subj_positions, obj_positions, subj_type, obj_type, relation)]
         return processed
@@ -148,7 +148,7 @@ class DataLoader(object):
     
     def __iter__(self):
         for i in range(self.__len__()):
-            yield self.__getitem__()
+            yield self.__getitem__(i)
     
 def map_to_ids(tokens, vocab):
     ids = [vocab[t] if t in vocab else constant.UNK_ID for t in tokens]
@@ -175,5 +175,4 @@ def sort_all(batch, lens):
 
 def word_dropout(tokens, dropout):
     """ Randomly dropout token from tokens with UNK"""
-    return [constant.UNK_ID if x != constant.UNK_ID and np.random.random() \
-        < dropout else x for i in tokens]
+    return [constant.UNK_ID if x != constant.UNK_ID and np.random.random() < dropout else x for i in tokens]

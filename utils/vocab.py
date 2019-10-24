@@ -67,7 +67,7 @@ class Vocab(object):
     def load(self, filename):
         with open(filename, 'rb') as fin:
             id2word = pickle.load(fin)
-            word2id = {v: k for k, v in id2word.items(0)}
+            word2id = dict([(id2word[idx], idx) for idx in range(len(id2word))])
         return id2word, word2id
     
     def save(self, filename):
