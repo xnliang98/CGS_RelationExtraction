@@ -6,6 +6,7 @@ from torch import nn
 from torch.nn import init
 import torch.nn.functional as F
 
+from model.lstm import MyLSTM
 from utils import constant, torch_utils
 
 
@@ -72,3 +73,78 @@ class PositionAwareAttention(nn.Module):
         # weighted average input vectors
         out = weights.unsqueeze(1).bmm(x).squeeze(1) # B, 1, T x B, T, I ==> B, 1, I ==> B, I
         return out
+
+
+class GCN(nn.Module):
+    """ A GCN/Contextualized GCN module operated on dependency graphs. """
+    def __init__(self, opt, embeddings, mem_dim, num_layers):
+        super(GCN, self).__init__()
+
+        self.opt = opt
+        self.layers = num_layers
+        self.use_cuda = opt['cuda']
+        self.mem_dim = mem_dim
+        self.in_dim = opt['emb_dim'] + opt['pos_dim'] + opt['ner_dim']
+
+        self.emb, self.pos_emb, self.ner_emb = embeddings
+
+        # rnn layer if contextualized
+        if self.opt.get('rnn', False):
+            input_size = self.in_dim
+            self.rnn = MyLSTM(input_size, opt['rnn_hidden'], opt['rnn_layers'], batch_first=True, \
+                dropout=opt['rnn_dropout'], bidirectional=True, use_cuda=opt['cuda'])
+            self.in_dim = opt['rnn_hidden'] * 2
+            self.rnn_drop = nn.Dropout(opt['rnn_dropout'])
+        
+        self.in_drop = nn.Dropout(opt['input_dropout'])
+        self.gcn_drop = nn.Dropout(opt['gcn_dropout'])
+
+        # gcn layer
+        self.W = nn.ModuleList()
+
+        for layer in range(self.layers):
+            input_dim = self.in_dim if layer == 0 else self.men_dim
+            self.W.append(nn.Linear(input_dim, self.mem_dim))
+    
+    def conv_l2(self):
+        # l2 regularization
+        conv_weights = []
+        for w in self.W:
+            conv_weights += [w.weight, w.bias]
+        return sum([x.pow(2).sum() for x in conv_weights])
+
+    def forward(self, adj, inputs):
+        words, masks, pos, ner, deprel, head, subj_pos, obj_pos, subj_type, obj_type = inputs # unpack
+        word_embs = self.emb(words)
+        embs = [word_embs]
+        if self.opt['pos_dim'] > 0:
+            embs += [self.pos_emb(pos)]
+        if self.opt['ner_dim'] > 0:
+            embs += [self.ner_emb(ner)]
+        embs = torch.cat(embs, dim=2)
+        embs = self.in_drop(embs)
+
+        # rnn layer
+        if self.opt.get('rnn', False):
+            gcn_inputs = self.rnn_drop(self.rnn(embs, masks, words.size()[0]))
+        else:
+            gcn_inputs = embs
+        
+        # gcn layer
+        denom = adj.sum(2).unsqueeze(2) + 1
+        mask = (adj.sum(2) + adj.sum(1)).eq(0).unsqueeze(2)
+        # zero out adj for ablation
+        if self.opt.get('no_adj', False):
+            adj = torch.zeros_like(adj)
+
+        for l in range(self.layers):
+            Ax = adj.bmm(gcn_inputs)
+            AxW = self.W[l](Ax)
+            AxW = AxW + self.W[l](gcn_inputs)
+            AxW = AxW / denom
+
+            gAxW = F.relu(AxW)
+            gcn_inputs = self.gcn_drop(gAxW) if l < self.layers - 1 else gAxW
+        
+        return gcn_inputs, mask
+
