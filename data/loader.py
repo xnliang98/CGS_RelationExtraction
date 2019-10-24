@@ -6,7 +6,7 @@ import json
 import random
 import os
 import numpy as np
-
+import torch
 from utils import constant, helper, vocab
 
 
@@ -164,7 +164,7 @@ def get_long_tensor(tokens_list, batch_size):
     token_len = max(len(x) for x in tokens_list)
     tokens = torch.LongTensor(batch_size, token_len).fill_(constant.PAD_ID)
     for i, s in enumerate(tokens_list):
-        tokens[i: len(s)] = torch.LongTensor(s)
+        tokens[i, : len(s)] = torch.LongTensor(s)
     return tokens
 
 def sort_all(batch, lens):
@@ -175,4 +175,4 @@ def sort_all(batch, lens):
 
 def word_dropout(tokens, dropout):
     """ Randomly dropout token from tokens with UNK"""
-    return [constant.UNK_ID if x != constant.UNK_ID and np.random.random() < dropout else x for i in tokens]
+    return [constant.UNK_ID if x != constant.UNK_ID and np.random.random() < dropout else x for x in tokens]
