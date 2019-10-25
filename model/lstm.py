@@ -31,10 +31,10 @@ class MyLSTM(nn.Module):
         rnn_outputs, _ = nn.utils.rnn.pad_packed_sequence(rnn_outputs, batch_first=self.batch_first)
         return rnn_outputs, ht
 
-    def rnn_zero_state(batch_size):
+    def rnn_zero_state(self, batch_size):
         total_layers = self.num_layers * self.direction
         state_shape = (total_layers, batch_size, self.hidden_dim)
-        h0 = c0 = Variable(torch.zeros(*state_shape), requires_grad=False)
+        h0 = c0 = torch.zeros(*state_shape, requires_grad=False)
         if self.use_cuda:
             return h0.cuda(), c0.cuda()
         else:

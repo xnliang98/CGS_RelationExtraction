@@ -103,7 +103,7 @@ class GCN(nn.Module):
         self.W = nn.ModuleList()
 
         for layer in range(self.layers):
-            input_dim = self.in_dim if layer == 0 else self.men_dim
+            input_dim = self.in_dim if layer == 0 else self.mem_dim
             self.W.append(nn.Linear(input_dim, self.mem_dim))
     
     def conv_l2(self):
@@ -126,7 +126,7 @@ class GCN(nn.Module):
 
         # rnn layer
         if self.opt.get('rnn', False):
-            gcn_inputs = self.rnn_drop(self.rnn(embs, masks, words.size()[0]))
+            gcn_inputs = self.rnn_drop(self.rnn(embs, masks, words.size()[0])[0])
         else:
             gcn_inputs = embs
         
@@ -148,3 +148,13 @@ class GCN(nn.Module):
         
         return gcn_inputs, mask
 
+def pool(h, mask, type='max'):
+    if type == 'max':
+        h = h.masked_fill(mask, -constant.INFINITY_NUMBER)
+        return torch.max(h, 1)[0]
+    elif type == 'avg':
+        h = h.masked_fill(mask, 0)
+        return h.sum(1) / (mask.size(1) - mask.float().sum(1))
+    else:
+        h = h.masked_fill(mask, 0)
+        return h.sum(1)
