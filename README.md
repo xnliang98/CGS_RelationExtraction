@@ -70,23 +70,3 @@ Reload a pretrained model and finetune it, run:
 ```
 python train.py --load --model_file saved_models/01/best_model.pt --optim sgd --lr 0.001
 ```
-
-## Related Repo
-
-The paper also includes comparisons to the position-aware attention LSTM (PA-LSTM) model for relation extraction. To reproduce the corresponding results, please refer to [this repo](https://github.com/yuhaozhang/tacred-relation).
-
-## Citation
-
-```
-@inproceedings{zhang2018graph,
- author = {Zhang, Yuhao and Qi, Peng and Manning, Christopher D.},
- booktitle = {Empirical Methods in Natural Language Processing (EMNLP)},
- title = {Graph Convolution over Pruned Dependency Trees Improves Relation Extraction},
- url = {https://nlp.stanford.edu/pubs/zhang2018graph.pdf},
- year = {2018}
-}
-```
-
-## License
-
-All work contained in this package is licensed under the Apache License, Version 2.0. See the included LICENSE file.
